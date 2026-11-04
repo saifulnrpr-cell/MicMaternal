@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>พิมพ์ด้วยเสียง</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; }
+        .btn { padding: 15px 30px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
+        #status { margin-top: 20px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <button class="btn" onclick="startVoice()">🎤 แตะเพื่อพูด</button>
+    <p id="status">รอรับคำสั่งเสียง...</p>
+
+    <script>
+        function startVoice() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                document.getElementById('status').innerText = "บราวเซอร์ไม่รองรับ";
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'th-TH';
+            
+            recognition.onstart = function() {
+                document.getElementById('status').innerText = "กำลังฟัง... (พูดได้เลย)";
+            };
+            
+            recognition.onresult = function(event) {
+                let text = event.results[0][0].transcript;
+                document.getElementById('status').innerText = "ได้รับข้อความแล้ว";
+                
+                // ส่งข้อความกลับไปยังหน้าต่างแม่ (GAS)
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'VOICE_RESULT', text: text }, '*');
+                    window.close(); // ปิดหน้าต่างตัวเองอัตโนมัติ
+                }
+            };
+            
+            recognition.onerror = function(e) {
+                document.getElementById('status').innerText = "เกิดข้อผิดพลาด: " + e.error;
+            };
+            
+            recognition.start();
+        }
+    </script>
+</body>
+</html>
