@@ -3,138 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>พิมพ์ด้วยเสียง (Voice Typing)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>พิมพ์ด้วยเสียง</title>
     <style>
-        body { font-family: 'Sarabun', 'Prompt', sans-serif; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; }
+        .btn { padding: 15px 30px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
+        #status { margin-top: 20px; color: #64748b; }
     </style>
 </head>
-<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
-        <!-- Header -->
-        <div class="bg-sky-50 px-5 py-4 border-b border-sky-100 flex items-center justify-between">
-            <h2 class="font-bold text-sky-700 flex items-center gap-2">
-                <i class="fas fa-microphone-alt"></i> พิมพ์ข้อความด้วยเสียง
-            </h2>
-        </div>
-
-        <!-- Body -->
-        <div class="p-5 flex-1 flex flex-col">
-            <div class="flex justify-between items-end mb-2">
-                <label class="text-sm font-bold text-slate-600">ข้อความที่ระบบได้ยิน:</label>
-                <span id="status-text" class="text-xs font-bold text-slate-400">สถานะ: รอการเริ่มพูด</span>
-            </div>
-            <textarea id="resultText" class="w-full flex-1 min-h-[200px] p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-slate-800 resize-none shadow-inner" placeholder="กดปุ่ม 'เริ่มฟังเสียง' แล้วพูดข้อความที่ต้องการ..."></textarea>
-            
-            <div class="mt-4 flex justify-center">
-                <button id="btn-record" onclick="toggleRecording()" class="w-16 h-16 rounded-full bg-slate-100 text-slate-500 border-4 border-slate-200 shadow-md hover:bg-slate-200 hover:text-slate-700 transition-all flex items-center justify-center outline-none">
-                    <i id="mic-icon" class="fas fa-microphone text-2xl"></i>
-                </button>
-            </div>
-            <p id="instruction-text" class="text-center text-xs text-slate-500 mt-2">กดปุ่มไมโครโฟนเพื่อเริ่มพูด</p>
-        </div>
-
-        <!-- Footer -->
-        <div class="bg-slate-50 px-5 py-4 border-t border-slate-200 flex justify-end gap-3">
-            <button onclick="window.close()" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-bold hover:bg-slate-300 transition text-sm">
-                ยกเลิก
-            </button>
-            <button onclick="sendToParent()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-md shadow-emerald-500/30 flex items-center gap-2 text-sm">
-                <i class="fas fa-check"></i> นำข้อความไปใช้
-            </button>
-        </div>
-    </div>
+<body>
+    <button class="btn" onclick="startVoice()">🎤 แตะเพื่อพูด</button>
+    <p id="status">รอรับคำสั่งเสียง...</p>
 
     <script>
-        let recognition = null;
-        let isRecording = false;
-        const resultText = document.getElementById('resultText');
-        const btnRecord = document.getElementById('btn-record');
-        const micIcon = document.getElementById('mic-icon');
-        const statusText = document.getElementById('status-text');
-        const instructionText = document.getElementById('instruction-text');
-
-        function initSpeech() {
+        function startVoice() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                document.getElementById('status').innerText = "บราวเซอร์ไม่รองรับ";
+                return;
+            }
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("เบราว์เซอร์ไม่รองรับ แนะนำให้ใช้ Google Chrome");
-                return false;
-            }
-            recognition = new SpeechRecognition();
-            recognition.lang = 'th-TH'; // ภาษาไทย
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'th-TH';
+            
             recognition.onstart = function() {
-                isRecording = true;
-                btnRecord.className = "w-16 h-16 rounded-full bg-red-100 text-red-600 border-4 border-red-200 shadow-lg animate-pulse flex items-center justify-center outline-none";
-                statusText.innerText = "สถานะ: กำลังฟัง...";
-                statusText.className = "text-xs font-bold text-red-500 animate-pulse";
-                instructionText.innerText = "กำลังฟังเสียง... (กดอีกครั้งเพื่อหยุด)";
+                document.getElementById('status').innerText = "กำลังฟัง... (พูดได้เลย)";
             };
-
+            
             recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
+                let text = event.results[0][0].transcript;
+                document.getElementById('status').innerText = "ได้รับข้อความแล้ว";
                 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-                
-                // ถ้าระบบจบประโยค ให้เอาไปต่อท้ายข้อความเดิม
-                if(finalTranscript) {
-                    let currentVal = resultText.value;
-                    if(currentVal && !currentVal.endsWith(' ') && !currentVal.endsWith('\n')) currentVal += ' ';
-                    resultText.value = currentVal + finalTranscript;
+                // ส่งข้อความกลับไปยังหน้าต่างแม่ (GAS)
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'VOICE_RESULT', text: text }, '*');
+                    window.close(); // ปิดหน้าต่างตัวเองอัตโนมัติ
                 }
             };
-
-            recognition.onerror = function(event) {
-                console.error("Speech error: ", event.error);
-                if(event.error === 'not-allowed') alert("กรุณาอนุญาตให้ใช้ไมโครโฟน");
-                stopRecording();
+            
+            recognition.onerror = function(e) {
+                document.getElementById('status').innerText = "เกิดข้อผิดพลาด: " + e.error;
             };
-
-            recognition.onend = function() {
-                stopRecording();
-            };
-            return true;
-        }
-
-        function toggleRecording() {
-            if (isRecording) {
-                recognition.stop();
-            } else {
-                if(!recognition) {
-                    if(!initSpeech()) return;
-                }
-                recognition.start();
-            }
-        }
-
-        function stopRecording() {
-            isRecording = false;
-            btnRecord.className = "w-16 h-16 rounded-full bg-slate-100 text-slate-500 border-4 border-slate-200 shadow-md hover:bg-slate-200 hover:text-slate-700 transition-all flex items-center justify-center outline-none";
-            statusText.innerText = "สถานะ: หยุดฟังแล้ว";
-            statusText.className = "text-xs font-bold text-slate-400";
-            instructionText.innerText = "กดปุ่มไมโครโฟนเพื่อพูดต่อ";
-        }
-
-        // ฟังก์ชันสำคัญ: ส่งข้อความกลับไปยังหน้าต่างที่เปิดขึ้นมา (GAS)
-        function sendToParent() {
-            const text = resultText.value.trim();
-            if (window.opener) {
-                // ส่งข้อมูลพร้อมระบุว่าเป็นคำสั่ง VOICE_RESULT
-                window.opener.postMessage({ type: 'VOICE_RESULT', text: text }, '*');
-                window.close(); // ปิดหน้าต่าง Popup
-            } else {
-                alert("ไม่สามารถส่งข้อมูลกลับไปได้ เนื่องจากไม่ได้เปิดผ่านระบบหลัก");
-            }
+            
+            recognition.start();
         }
     </script>
 </body>
