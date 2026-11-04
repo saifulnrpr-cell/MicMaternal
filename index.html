@@ -55,6 +55,8 @@
         const statusText = document.getElementById('status-text');
         const instructionText = document.getElementById('instruction-text');
 
+        const interimDisplay = document.getElementById('interim-display');
+
         function initSpeech() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
