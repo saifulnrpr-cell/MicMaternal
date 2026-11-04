@@ -5,14 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>พิมพ์ด้วยเสียง</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; }
-        .btn { padding: 15px 30px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
-        #status { margin-top: 20px; color: #64748b; }
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            background: #f8fafc; 
+            margin: 0; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            text-align: center;
+        }
+        .btn { 
+            padding: 15px 30px; 
+            background: #0ea5e9; 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 18px; 
+            cursor: pointer; 
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+            transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.95); }
+        #status { 
+            margin-bottom: 20px; 
+            color: #64748b; 
+            font-weight: bold;
+        }
+        /* เพิ่มกล่องแสดงข้อความ */
+        #text-container {
+            width: 100%;
+            max-width: 350px;
+            min-height: 120px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: left;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        .final-text { color: #1e293b; } /* สีข้อความที่พูดเสร็จแล้ว */
+        .interim-text { color: #94a3b8; font-style: italic; } /* สีข้อความที่กำลังพูด (เรียลไทม์) */
     </style>
 </head>
 <body>
     <button class="btn" onclick="startVoice()">🎤 แตะเพื่อพูด</button>
     <p id="status">รอรับคำสั่งเสียง...</p>
+    
+    <!-- กล่องแสดงข้อความสด -->
+    <div id="text-container">
+        <span id="final-span" class="final-text"></span>
+        <span id="interim-span" class="interim-text"></span>
+    </div>
 
     <script>
         function startVoice() {
@@ -24,18 +74,46 @@
             const recognition = new SpeechRecognition();
             recognition.lang = 'th-TH';
             
+            // 🌟 เปิดให้ส่งผลลัพธ์กลับมาแบบเรียลไทม์ระหว่างที่กำลังพูด
+            recognition.interimResults = true; 
+            recognition.continuous = false; // ตั้งเป็น false เพื่อให้ระบบจบการทำงานเมื่อพูดจบ 1 ประโยค
+            
             recognition.onstart = function() {
                 document.getElementById('status').innerText = "กำลังฟัง... (พูดได้เลย)";
+                document.getElementById('final-span').innerText = '';
+                document.getElementById('interim-span').innerText = '';
             };
             
             recognition.onresult = function(event) {
-                let text = event.results[0][0].transcript;
-                document.getElementById('status').innerText = "ได้รับข้อความแล้ว";
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                // วนลูปแยกข้อความที่กำลังพูด (interim) และข้อความที่พูดเสร็จแล้ว (final)
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // อัปเดตข้อความบนหน้าจอ
+                document.getElementById('final-span').innerText += finalTranscript;
+                document.getElementById('interim-span').innerText = interimTranscript;
                 
-                // ส่งข้อความกลับไปยังหน้าต่างแม่ (GAS)
-                if (window.opener) {
-                    window.opener.postMessage({ type: 'VOICE_RESULT', text: text }, '*');
-                    window.close(); // ปิดหน้าต่างตัวเองอัตโนมัติ
+                // หากได้ข้อความที่สมบูรณ์ (isFinal เป็น true) ให้ส่งกลับหน้าหลัก
+                if (finalTranscript !== '') {
+                    document.getElementById('status').innerText = "ได้รับข้อความแล้ว กำลังส่งข้อมูล...";
+                    
+                    // ส่งข้อความกลับไปยังหน้าต่างแม่ (GAS)
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'VOICE_RESULT', text: finalTranscript }, '*');
+                        
+                        // หน่วงเวลา 1 วินาทีให้ผู้ใช้เห็นข้อความก่อนปิดหน้าต่าง
+                        setTimeout(() => {
+                            window.close();
+                        }, 1000);
+                    }
                 }
             };
             
